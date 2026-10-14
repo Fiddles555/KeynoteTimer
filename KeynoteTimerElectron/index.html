@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keynote Timer</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#111;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;height:100vh;overflow:hidden;user-select:none}
+#app{display:flex;flex-direction:column;height:100vh;padding:14px;gap:10px}
+#main-row{display:flex;gap:10px;flex:1;min-height:0}
+#timer-col{display:flex;flex-direction:column;gap:10px;flex:1;min-width:0}
+#timer-display{flex:1;border-radius:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;min-height:0;position:relative;overflow:hidden}
+#timer-text{font-weight:300;font-variant-numeric:tabular-nums;line-height:1}
+#message-overlay{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.55);padding:10px 20px;border-radius:10px;font-size:clamp(16px,2vw,28px);white-space:nowrap;display:none}
+#info-strip{background:#141414;border-radius:10px;padding:0 20px;height:52px;display:flex;align-items:center;flex-shrink:0}
+#info-total{font-size:clamp(13px,1.4vw,22px);font-weight:600;white-space:nowrap}
+#info-end{font-size:clamp(13px,1.4vw,22px);margin:0 auto}
+#info-right{display:flex;align-items:center;gap:8px;white-space:nowrap}
+#display-status{font-size:clamp(11px,1.1vw,16px)}
+#settings-btn{background:none;border:none;color:#888;cursor:pointer;font-size:20px;padding:4px 0 4px 10px}
+#bottom-controls{background:#141414;border-radius:10px;padding:0 16px;height:110px;display:flex;align-items:center;flex-shrink:0}
+#action-btns{display:flex;gap:28px;align-items:center}
+.action-btn{background:none;border:none;color:#fff;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:11px;padding:0}
+.action-btn svg{width:44px;height:44px}
+#presets{display:flex;gap:6px;margin:0 16px}
+.preset-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff;cursor:pointer;font-size:12px;font-weight:600;width:44px;height:28px;border-radius:20px}
+.preset-btn.active{background:rgba(0,210,210,.25);border-color:#0dd}
+#toggles{display:flex;flex-direction:column;gap:10px;margin-left:auto}
+.toggle-row{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+input[type=checkbox]{width:36px;height:20px;appearance:none;background:#444;border-radius:10px;position:relative;cursor:pointer;transition:.2s;flex-shrink:0}
+input[type=checkbox]:checked{background:#0c6}
+input[type=checkbox]::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:2px;left:2px;transition:.2s}
+input[type=checkbox]:checked::after{left:18px}
+#right-col{display:flex;flex-direction:column;gap:10px;width:140px;flex-shrink:0}
+#set-change-clear{background:#141414;border-radius:10px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:space-evenly}
+.circle-btn{background:none;border:2px solid rgba(255,255,255,.5);color:#fff;border-radius:50%;width:110px;height:110px;font-size:18px;font-weight:500;cursor:pointer}
+.circle-btn.hi{border-color:#0dd;color:#0dd}
+.circle-btn:hover{background:rgba(255,255,255,.08)}
+#start-stop-area{background:#141414;border-radius:10px;height:172px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#start-btn{border:none;border-radius:50%;width:120px;height:120px;font-size:18px;font-weight:700;color:#fff;cursor:pointer;background:#1a8a1a}
+#start-btn.running{background:#c00}
+.panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .25s}
+.panel-overlay.open{opacity:1;pointer-events:all}
+.panel-sheet{background:#1c1c1e;border-radius:20px 20px 0 0;width:100%;max-width:900px;transform:translateY(100%);transition:transform .3s}
+.panel-overlay.open .panel-sheet{transform:translateY(0)}
+.panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid #333}
+.panel-title{font-size:15px;font-weight:600}
+.pa{background:none;border:none;color:#0af;font-size:15px;cursor:pointer;font-weight:600}
+.pc{color:#f55}
+.picker-row{display:flex}
+.picker-col{flex:1;text-align:center;position:relative}
+.picker-label{font-size:11px;color:#888;padding:8px 0 4px}
+.picker-wrap{height:160px;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none}
+.picker-wrap::-webkit-scrollbar{display:none}
+.picker-item{height:40px;display:flex;align-items:center;justify-content:center;font-size:20px;scroll-snap-align:center;cursor:pointer;color:#555}
+.picker-item.sel{color:#fff;font-size:26px}
+.picker-hl{position:absolute;left:4px;right:4px;top:50%;transform:translateY(-50%);height:40px;border-top:1px solid #444;border-bottom:1px solid #444;pointer-events:none;margin-top:28px}
+#tt-info{display:flex;align-items:center;justify-content:space-around;padding:16px;background:#000}
+.tt-stat{text-align:center}
+.tt-stat-lbl{font-size:12px;color:#888;margin-bottom:4px}
+.tt-stat-val{font-size:20px;font-weight:600}
+#tt-start-btn{display:block;width:100%;padding:14px;font-size:17px;font-weight:700;color:#0af;background:none;border:none;cursor:pointer}
+#tt-start-btn.inv{color:#f55}
+.tt-ph{text-align:center;font-size:12px;font-weight:600;padding:8px;background:#111;color:#aaa}
+.tt-ph.inv{color:#f55;background:rgba(255,60,60,.1)}
+.s-sec{padding:12px 20px;border-bottom:1px solid #2a2a2a}
+.s-stitle{font-size:11px;color:#666;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.s-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;font-size:15px}
+.swatch{width:28px;height:28px;border-radius:50%;border:2px solid #555;cursor:pointer;position:relative;overflow:hidden}
+.swatch input{position:absolute;inset:-50%;opacity:0;cursor:pointer;width:200%;height:200%}
+.stpr{display:flex;align-items:center;gap:10px}
+.stpr-btn{background:#333;border:none;color:#fff;width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer}
+#msg-input{width:100%;padding:12px 16px;background:#2a2a2a;border:1px solid #444;border-radius:10px;color:#fff;font-size:16px;margin:16px 0;outline:none}
+#msg-input:focus{border-color:#0af}
+@keyframes flash{0%,100%{opacity:1}50%{opacity:.15}}
+.anim{animation:flash 1.2s ease-in-out infinite}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="main-row">
+    <div id="timer-col">
+      <div id="timer-display" onclick="timerClick(event)">
+        <div id="timer-text">30:00</div>
+        <div id="message-overlay"></div>
+      </div>
+      <div id="info-strip">
+        <span id="info-total">Total: 30:00</span>
+        <span id="info-end">Will end at --:-- --</span>
+        <div id="info-right">
+          <span id="display-status" style="color:#f44">● No Display</span>
+          <button id="settings-btn" onclick="openPanel('s-panel')">⚙</button>
+        </div>
+      </div>
+      <div id="bottom-controls">
+        <div id="action-btns">
+          <button class="action-btn" onclick="openTTPanel()">
+            <svg viewBox="0 0 44 44" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round">
+              <circle cx="22" cy="22" r="16"/><path d="M22 12v10l6 4"/><path d="M10 10l4 4M34 10l-4 4"/>
+            </svg>Start Time Travel
+          </button>
+          <button class="action-btn" onclick="openPanel('msg-panel')">
+            <svg viewBox="0 0 44 44" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="6" y="10" width="32" height="22" rx="4"/><path d="M14 32l4 6 4-6"/>
+            </svg>Show Message
+          </button>
+        </div>
+        <div id="presets">
+          <button class="preset-btn" onclick="setPreset(300)">5m</button>
+          <button class="preset-btn" onclick="setPreset(600)">10m</button>
+          <button class="preset-btn" onclick="setPreset(900)">15m</button>
+          <button class="preset-btn" onclick="setPreset(1800)">30m</button>
+          <button class="preset-btn" onclick="setPreset(3600)">1h</button>
+        </div>
+        <div id="toggles">
+          <label class="toggle-row"><input type="checkbox" id="tog-warn" checked onchange="S.warnOn=this.checked;save()"> 2 minute warning</label>
+          <label class="toggle-row"><input type="checkbox" id="tog-anim" checked onchange="S.animEnd=this.checked;save()"> Animate on end</label>
+        </div>
+      </div>
+    </div>
+    <div id="right-col">
+      <div id="set-change-clear">
+        <button class="circle-btn hi" onclick="doSet()">Set</button>
+        <button class="circle-btn" onclick="openChange()">Change</button>
+        <button class="circle-btn" onclick="doClear()">Clear</button>
+      </div>
+      <div id="start-stop-area">
+        <button id="start-btn" onclick="toggleTimer()">START</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Set/Change panel -->
+<div class="panel-overlay" id="set-panel">
+  <div class="panel-sheet">
+    <div class="panel-header">
+      <button class="pa pc" onclick="closePanel('set-panel')">Cancel</button>
+      <span class="panel-title" id="set-title">Set Time</span>
+      <button class="pa" onclick="confirmSet()">Done</button>
+    </div>
+    <div style="position:relative">
+      <div class="picker-row" id="set-pickers"></div>
+      <div class="picker-hl"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Time Travel panel -->
+<div class="panel-overlay" id="tt-panel">
+  <div class="panel-sheet" style="max-height:80vh;overflow-y:auto">
+    <div class="panel-header" style="justify-content:flex-start;gap:12px">
+      <button onclick="cancelTT()" style="background:none;border:2px solid orange;color:orange;border-radius:50%;width:36px;height:36px;font-weight:700;cursor:pointer;font-size:13px">✕</button>
+      <span class="panel-title">Time Travel</span>
+    </div>
+    <div id="tt-info">
+      <div class="tt-stat"><div class="tt-stat-lbl">Natural End Time</div><div class="tt-stat-val" id="tt-nat">--</div></div>
+      <div style="width:80px;height:80px;background:#222;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center">
+        <div style="font-size:26px;font-weight:700" id="tt-saved">0</div>
+        <div style="font-size:9px;color:#888;text-align:center;line-height:1.2">minutes<br>saved</div>
+      </div>
+      <div class="tt-stat"><div class="tt-stat-lbl">New End Time</div><div class="tt-stat-val" id="tt-adj" style="color:#0dd">--</div></div>
+    </div>
+    <button id="tt-start-btn" onclick="startTT()">Start Time Travel</button>
+    <div class="tt-ph" id="tt-ph">Select New End Time</div>
+    <div style="position:relative">
+      <div class="picker-row" id="tt-pickers"></div>
+      <div class="picker-hl"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Message panel -->
+<div class="panel-overlay" id="msg-panel">
+  <div class="panel-sheet">
+    <div class="panel-header">
+      <button class="pa pc" onclick="closePanel('msg-panel')">Cancel</button>
+      <span class="panel-title">Show Message</span>
+      <button class="pa" onclick="showMsg()">Show</button>
+    </div>
+    <div style="padding:0 16px 20px">
+      <p style="font-size:13px;color:#888;margin:12px 0 6px">Enter Message Text</p>
+      <input id="msg-input" type="text" placeholder="Type your message...">
+    </div>
+  </div>
+</div>
+
+<!-- Settings panel -->
+<div class="panel-overlay" id="s-panel">
+  <div class="panel-sheet" style="max-height:85vh;overflow-y:auto">
+    <div class="panel-header">
+      <span class="panel-title">Settings</span>
+      <button class="pa" onclick="closePanel('s-panel')">Done</button>
+    </div>
+    <div class="s-sec">
+      <div class="s-stitle">Normal</div>
+      <div class="s-row">Background Color<div class="swatch" id="sw0"><input type="color" oninput="setCol('nBg',this.value)" onchange="save()"></div></div>
+      <div class="s-row">Text Color<div class="swatch" id="sw1"><input type="color" oninput="setCol('nTx',this.value)" onchange="save()"></div></div>
+    </div>
+    <div class="s-sec">
+      <div class="s-stitle">Warning</div>
+      <div class="s-row">Background Color<div class="swatch" id="sw2"><input type="color" oninput="setCol('wBg',this.value)" onchange="save()"></div></div>
+      <div class="s-row">Text Color<div class="swatch" id="sw3"><input type="color" oninput="setCol('wTx',this.value)" onchange="save()"></div></div>
+      <div class="s-row">Trigger<div class="stpr"><button class="stpr-btn" onclick="adjT(-1)">−</button><span id="trig-lbl" style="min-width:40px;text-align:center">2 min</span><button class="stpr-btn" onclick="adjT(1)">+</button></div></div>
+    </div>
+    <div class="s-sec">
+      <div class="s-stitle">Time Up</div>
+      <div class="s-row">Background Color<div class="swatch" id="sw4"><input type="color" oninput="setCol('uBg',this.value)" onchange="save()"></div></div>
+      <div class="s-row">Text Color<div class="swatch" id="sw5"><input type="color" oninput="setCol('uTx',this.value)" onchange="save()"></div></div>
+    </div>
+    <div class="s-sec">
+      <div class="s-stitle">External Display</div>
+      <div class="s-row">Show timer on second screen
+        <button onclick="openExt()" style="background:#1a4a1a;border:1px solid #0c6;color:#0c6;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:13px">Open External</button>
+      </div>
+      <p style="font-size:12px;color:#555;padding-bottom:8px">A window opens — move it to your projector and press F11 or Ctrl+Cmd+F for full screen.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const S={
+  total:1800,rem:1800,running:false,finished:false,
+  nBg:'#3da012',nTx:'#ffffff',wBg:'#ddcc00',wTx:'#ffffff',
+  uBg:'#cc0000',uTx:'#ffffff',warnOn:true,animEnd:true,warnMin:2,
+  msg:'',showMsg:false,ttOn:false,ttTarget:0,ttRate:1,ttFrac:0,ttLast:0
+};
+const COLS=[['sw0','nBg'],['sw1','nTx'],['sw2','wBg'],['sw3','wTx'],['sw4','uBg'],['sw5','uTx']];
+let ticker=null,extWin=null,setMode='set',pH=0,pM=30,pSc=0,ttH=12,ttM=0,ttAP=1;
+
+// ── Helpers ─────────────────────────────────────────────────────────────────
+const pad=n=>String(n).padStart(2,'0');
+function fmt(s){
+  s=Math.max(0,Math.floor(s));
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=s%60;
+  return h>0?`${h}:${pad(m)}:${pad(sc)}`:`${pad(m)}:${pad(sc)}`;
+}
+function fmtT(ms){
+  if(!ms)return'--:-- --';
+  const d=new Date(ms);
+  let h=d.getHours(),m=d.getMinutes(),ap='AM';
+  if(h>=12){ap='PM';if(h>12)h-=12;}if(h===0)h=12;
+  return`${h}:${pad(m)} ${ap}`;
+}
+function currentColors(){
+  let bg=S.nBg,fg=S.nTx;
+  if(S.finished){bg=S.uBg;fg=S.uTx;}
+  else if(S.warnOn&&S.rem<=S.warnMin*60&&S.rem>0){bg=S.wBg;fg=S.wTx;}
+  return{bg,fg};
+}
+
+// ── External window: push state ───────────────────────────────────────────────
+function pushExt(){
+  const{bg,fg}=currentColors();
+  const state={
+    bg, fg,
+    text: fmt(S.rem),
+    flash: S.animEnd&&S.finished,
+    msg: (S.showMsg&&S.msg)?S.msg:''
+  };
+  if(isElectron){
+    window.electronAPI.pushState(state);
+    return;
+  }
+  // Browser fallback: direct DOM
+  if(!extWin||extWin.closed)return;
+  try{
+    const ew=extWin.document;
+    const wrap=ew.getElementById('wrap');
+    const et=ew.getElementById('et');
+    const em=ew.getElementById('em');
+    if(!wrap||!et)return;
+    wrap.style.background=state.bg;
+    et.style.color=state.fg;
+    et.textContent=state.text;
+    if(state.flash)et.classList.add('fl');else et.classList.remove('fl');
+    if(state.msg){em.style.display='block';em.textContent=state.msg;em.style.color=state.fg;}
+    else em.style.display='none';
+  }catch(e){}
+}
+
+// ── Render ──────────────────────────────────────────────────────────────────
+function render(){
+  const{bg,fg}=currentColors();
+  const td=document.getElementById('timer-display');
+  const tt=document.getElementById('timer-text');
+  td.style.background=bg; tt.style.color=fg; tt.textContent=fmt(S.rem);
+  tt.style.fontSize=S.rem>=3600?'clamp(60px,min(20vw,44vh),600px)':'clamp(60px,min(28vw,62vh),800px)';
+  if(S.animEnd&&S.finished)tt.classList.add('anim');else tt.classList.remove('anim');
+  const mo=document.getElementById('message-overlay');
+  if(S.showMsg&&S.msg){mo.style.display='block';mo.textContent=S.msg;mo.style.color=fg;}
+  else mo.style.display='none';
+  const sb=document.getElementById('start-btn');
+  sb.textContent=S.running?'STOP':'START'; sb.className=S.running?'running':'';
+  document.getElementById('info-total').textContent='Total: '+fmt(S.total);
+  const endMs=S.ttOn&&S.ttTarget?S.ttTarget:Date.now()+S.rem*1000;
+  document.getElementById('info-end').textContent='Will end at '+fmtT(endMs);
+  const ok=isElectron?extOpen:(extWin&&!extWin.closed);
+  document.getElementById('display-status').innerHTML=ok
+    ?'<span style="color:#0c6">● External Display</span>'
+    :'<span style="color:#f44">● No Display</span>';
+  const presetSecs=[300,600,900,1800,3600];
+  document.querySelectorAll('.preset-btn').forEach((b,i)=>b.classList.toggle('active',S.total===presetSecs[i]));
+  pushExt();
+}
+
+// ── Timer ───────────────────────────────────────────────────────────────────
+function timerClick(e){if(e.target!==document.getElementById('message-overlay'))toggleTimer();}
+function toggleTimer(){if(S.running){stopTimer();resetTT();}else startTimer();}
+function startTimer(){
+  if(S.rem<=0)return;
+  S.running=true;S.finished=false;
+  if(S.ttOn&&S.ttTarget){
+    const wall=(S.ttTarget-Date.now())/1000;
+    if(wall>1){S.ttRate=S.rem/wall;S.ttFrac=0;S.ttLast=Date.now();}else resetTT();
+  }
+  clearInterval(ticker);
+  ticker=setInterval(tick,100);
+  render();
+}
+function stopTimer(){S.running=false;clearInterval(ticker);ticker=null;render();}
+
+let lastSec=0;
+function tick(){
+  if(!S.running)return;
+  const now=Date.now();
+  if(S.ttOn&&S.ttTarget){
+    if(!S.ttLast)S.ttLast=now;
+    const el=(now-S.ttLast)/1000; S.ttLast=now;
+    S.ttFrac+=el*S.ttRate;
+    const w=Math.floor(S.ttFrac); S.ttFrac-=w;
+    if(w>0){
+      S.rem=Math.max(0,S.rem-w);
+      const wl=(S.ttTarget-now)/1000;
+      if(wl>0.1)S.ttRate=S.rem/wl;
+    }
+  }else{
+    const sec=Math.floor(now/1000);
+    if(sec!==lastSec){lastSec=sec;if(S.rem>0)S.rem--;}
+  }
+  if(S.rem<=0){finish();return;}
+  render();
+}
+function finish(){S.rem=0;S.finished=true;S.running=false;S.ttOn=false;clearInterval(ticker);ticker=null;render();}
+
+// ── Controls ─────────────────────────────────────────────────────────────────
+function doSet(){resetTT();S.rem=S.total;S.finished=false;render();}
+function doClear(){resetTT();stopTimer();S.rem=0;S.finished=false;render();}
+function setPreset(s){resetTT();S.total=s;S.rem=s;S.finished=false;render();}
+function openChange(){setMode='change';document.getElementById('set-title').textContent='Change Total Time';buildSetPickers(S.total);openPanel('set-panel');}
+
+// ── Picker engine ────────────────────────────────────────────────────────────
+function buildPicker(cid,cols){
+  const c=document.getElementById(cid); c.innerHTML='';
+  cols.forEach(col=>{
+    const wrap=document.createElement('div'); wrap.className='picker-col';
+    const lbl=document.createElement('div'); lbl.className='picker-label'; lbl.textContent=col.label; wrap.appendChild(lbl);
+    const scr=document.createElement('div'); scr.className='picker-wrap';
+    const t=document.createElement('div'); t.style.height='60px'; scr.appendChild(t);
+    col.items.forEach(v=>{
+      const el=document.createElement('div'); el.className='picker-item'+(v===col.val?' sel':'');
+      el.textContent=col.fmt?col.fmt(v):v;
+      el.onclick=()=>{scr.querySelectorAll('.picker-item').forEach(x=>x.classList.remove('sel'));el.classList.add('sel');el.scrollIntoView({block:'center',behavior:'smooth'});col.set(v);};
+      scr.appendChild(el);
+    });
+    const b=document.createElement('div'); b.style.height='60px'; scr.appendChild(b);
+    wrap.appendChild(scr); c.appendChild(wrap);
+    setTimeout(()=>{const s=scr.querySelector('.sel');if(s)s.scrollIntoView({block:'center'});},60);
+  });
+}
+function buildSetPickers(from){
+  pH=Math.floor(from/3600);pM=Math.floor((from%3600)/60);pSc=from%60;
+  buildPicker('set-pickers',[
+    {label:'Hours',items:[...Array(24).keys()],val:pH,set:v=>pH=v},
+    {label:'Minutes',items:[...Array(60).keys()],val:pM,fmt:pad,set:v=>pM=v},
+    {label:'Seconds',items:[...Array(60).keys()],val:pSc,fmt:pad,set:v=>pSc=v}
+  ]);
+}
+function confirmSet(){
+  const t=pH*3600+pM*60+pSc;
+  if(setMode==='set'){resetTT();S.total=t;S.rem=t;S.finished=false;stopTimer();}
+  else{resetTT();S.total=t;S.finished=S.rem===0;}
+  closePanel('set-panel');render();
+}
+
+// ── Time Travel ───────────────────────────────────────────────────────────────
+function openTTPanel(){
+  if(!S.ttOn){const n=new Date(Date.now()+S.rem*1000);let h=n.getHours();ttM=n.getMinutes();ttAP=h>=12?1:0;if(h>12)h-=12;if(h===0)h=12;ttH=h;}
+  buildPicker('tt-pickers',[
+    {label:'Hour',items:[...Array(12).keys()].map(x=>x+1),val:ttH,set:v=>{ttH=v;updTT();}},
+    {label:'Minute',items:[...Array(60).keys()],val:ttM,fmt:pad,set:v=>{ttM=v;updTT();}},
+    {label:'AM/PM',items:[0,1],val:ttAP,fmt:v=>v?'PM':'AM',set:v=>{ttAP=v;updTT();}}
+  ]);
+  updTT(); openPanel('tt-panel');
+}
+function getTTMs(){
+  let h=ttH; if(ttAP===1&&h!==12)h+=12; if(ttAP===0&&h===12)h=0;
+  const d=new Date(); d.setHours(h,ttM,0,0);
+  if(d.getTime()<Date.now())d.setDate(d.getDate()+1);
+  const tom=new Date(d.getTime()+86400000);
+  const mn=Date.now()+60000,mx=Date.now()+S.rem*1000;
+  if(d.getTime()>=mn&&d.getTime()<=mx)return d.getTime();
+  if(tom.getTime()>=mn&&tom.getTime()<=mx)return tom.getTime();
+  return d.getTime();
+}
+function updTT(){
+  const nat=Date.now()+S.rem*1000,tgt=getTTMs();
+  const mn=Date.now()+60000,mx=Date.now()+S.rem*1000,bad=tgt<mn||tgt>mx;
+  const saved=Math.max(0,Math.round((nat-tgt)/60000));
+  document.getElementById('tt-nat').textContent=fmtT(nat);
+  document.getElementById('tt-adj').textContent=fmtT(tgt);
+  document.getElementById('tt-adj').style.color=bad?'#f55':'#0dd';
+  document.getElementById('tt-saved').textContent=saved;
+  document.getElementById('tt-start-btn').textContent=bad?'⚠ Invalid — Adjust Selection':'Start Time Travel';
+  document.getElementById('tt-start-btn').className=bad?'inv':'';
+  document.getElementById('tt-ph').textContent='Select New End Time'+(bad?' ⚠':'');
+  document.getElementById('tt-ph').className='tt-ph'+(bad?' inv':'');
+}
+function startTT(){
+  const tgt=getTTMs(),mn=Date.now()+60000,mx=Date.now()+S.rem*1000;
+  if(tgt<mn||tgt>mx)return;
+  const wall=(tgt-Date.now())/1000; if(wall<1||S.rem<=0){closePanel('tt-panel');return;}
+  S.ttTarget=tgt;S.ttRate=S.rem/wall;S.ttFrac=0;S.ttLast=Date.now();S.ttOn=true;
+  closePanel('tt-panel');render();
+}
+function cancelTT(){closePanel('tt-panel');}
+function resetTT(){S.ttOn=false;S.ttRate=1;S.ttFrac=0;S.ttTarget=0;S.ttLast=0;}
+
+// ── Message ───────────────────────────────────────────────────────────────────
+function showMsg(){S.msg=document.getElementById('msg-input').value;S.showMsg=!!S.msg;closePanel('msg-panel');render();}
+
+// ── Settings ──────────────────────────────────────────────────────────────────
+function setCol(k,v){S[k]=v;const c=COLS.find(x=>x[1]===k);if(c)document.getElementById(c[0]).style.background=v;render();}
+function adjT(d){S.warnMin=Math.max(1,Math.min(30,S.warnMin+d));document.getElementById('trig-lbl').textContent=S.warnMin+' min';save();}
+function save(){try{localStorage.setItem('KT_cfg',JSON.stringify({total:S.total,nBg:S.nBg,nTx:S.nTx,wBg:S.wBg,wTx:S.wTx,uBg:S.uBg,uTx:S.uTx,warnOn:S.warnOn,animEnd:S.animEnd,warnMin:S.warnMin}));}catch(e){}}
+function load(){
+  try{
+    const c=JSON.parse(localStorage.getItem('KT_cfg')||'{}');
+    if(c.total){S.total=c.total;S.rem=c.total;}
+    ['nBg','nTx','wBg','wTx','uBg','uTx'].forEach(k=>{if(c[k])S[k]=c[k];});
+    if(c.warnOn!==undefined){S.warnOn=c.warnOn;document.getElementById('tog-warn').checked=c.warnOn;}
+    if(c.animEnd!==undefined){S.animEnd=c.animEnd;document.getElementById('tog-anim').checked=c.animEnd;}
+    if(c.warnMin){S.warnMin=c.warnMin;document.getElementById('trig-lbl').textContent=c.warnMin+' min';}
+    COLS.forEach(([id,k])=>{const sw=document.getElementById(id);if(sw){sw.style.background=S[k];sw.querySelector('input').value=S[k];}});
+  }catch(e){}
+}
+
+// ── External display ──────────────────────────────────────────────────────────
+const isElectron = !!window.electronAPI;
+let extOpen = false; // tracks external window state in Electron mode
+
+if(isElectron){
+  window.electronAPI.onExternalOpened(()=>{ extOpen=true; render(); });
+  window.electronAPI.onExternalClosed(()=>{ extOpen=false; render(); });
+  window.electronAPI.onMenuOpenExternal(()=>openExt());
+}
+
+function openExt(){
+  if(isElectron){
+    window.electronAPI.openExternal();
+    closePanel('s-panel');
+    return;
+  }
+  // Browser fallback
+  if(extWin&&!extWin.closed){extWin.focus();pushExt();return;}
+  extWin=window.open('','_blank','width=1280,height=720,toolbar=0,menubar=0,scrollbars=0,resizable=1');
+  if(!extWin){alert('Pop-ups are blocked. Please allow pop-ups for this site and try again.');return;}
+  extWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,sans-serif}
+#wrap{width:100vw;height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#3da012}
+#et{font-size:clamp(80px,72vh,1200px);font-weight:300;font-variant-numeric:tabular-nums;color:#fff;line-height:1}
+#em{font-size:clamp(20px,5vw,80px);color:#fff;margin-bottom:3vh;display:none;text-align:center;padding:0 40px}
+@keyframes fl{0%,100%{opacity:1}50%{opacity:.12}}.fl{animation:fl 1.2s ease-in-out infinite}
+</style></head><body><div id="wrap"><div id="em"></div><div id="et">--:--</div></div></body></html>`);
+  extWin.document.close();
+  let attempts=0;
+  const tryPush=()=>{
+    attempts++;
+    try{
+      const et=extWin.document.getElementById('et');
+      if(et){pushExt();clearInterval(initTimer);}
+      else if(attempts>20)clearInterval(initTimer);
+    }catch(e){if(attempts>20)clearInterval(initTimer);}
+  };
+  const initTimer=setInterval(tryPush,100);
+  closePanel('s-panel');
+  setInterval(()=>{if(extWin&&extWin.closed){extWin=null;render();}},1000);
+}
+
+// ── Panels ────────────────────────────────────────────────────────────────────
+function openPanel(id){document.getElementById(id).classList.add('open');}
+function closePanel(id){document.getElementById(id).classList.remove('open');}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+load();
+COLS.forEach(([id,k])=>{const sw=document.getElementById(id);if(sw){sw.style.background=S[k];sw.querySelector('input').value=S[k];}});
+render();
+</script>
+</body>
+</html>

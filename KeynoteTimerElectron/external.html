@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keynote Timer — External Display</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; font-family: -apple-system, sans-serif; }
+#wrap {
+  width: 100vw; height: 100vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  background: #3da012;
+  transition: background 0.4s ease;
+}
+#et {
+  font-size: clamp(80px, 72vh, 1200px);
+  font-weight: 300;
+  font-variant-numeric: tabular-nums;
+  color: #fff;
+  line-height: 1;
+  transition: color 0.4s ease;
+}
+#em {
+  font-size: clamp(20px, 5vw, 80px);
+  color: #fff;
+  margin-bottom: 3vh;
+  display: none;
+  text-align: center;
+  padding: 0 40px;
+}
+@keyframes fl { 0%, 100% { opacity: 1; } 50% { opacity: 0.12; } }
+.fl { animation: fl 1.2s ease-in-out infinite; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="em"></div>
+  <div id="et">--:--</div>
+</div>
+<script>
+  const wrap = document.getElementById('wrap');
+  const et   = document.getElementById('et');
+  const em   = document.getElementById('em');
+
+  // Adjust font size for hour+ display
+  // vw limit derived from character width: ~0.58em per char at weight 300
+  //   MM:SS   (5 chars) → font-size ≤ 90vw / (5×0.58) ≈ 31vw
+  //   H:MM:SS (7 chars) → font-size ≤ 90vw / (7×0.58) ≈ 22vw
+  function setFontSize(text) {
+    et.style.fontSize = text.length > 5
+      ? 'clamp(60px, min(22vw, 42vh), 600px)'   // H:MM:SS
+      : 'clamp(80px, min(31vw, 62vh), 900px)';  // MM:SS
+  }
+
+  // ESC always closes the external window
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && window.electronAPI) window.electronAPI.closeExternal();
+  });
+
+  if (window.electronAPI) {
+    window.electronAPI.onStateUpdate(state => {
+      wrap.style.background = state.bg;
+      et.style.color = state.fg;
+      et.textContent = state.text;
+      setFontSize(state.text);
+      if (state.flash) et.classList.add('fl'); else et.classList.remove('fl');
+      if (state.msg) { em.style.display = 'block'; em.textContent = state.msg; em.style.color = state.fg; }
+      else em.style.display = 'none';
+    });
+  }
+</script>
+</body>
+</html>

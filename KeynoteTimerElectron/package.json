@@ -1,0 +1,40 @@
+{
+  "name": "keynote-timer",
+  "version": "1.0.0",
+  "description": "Professional countdown timer for keynote speakers",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build-mac": "electron-builder --mac --universal --publish onTagOrDraft",
+    "build-win": "electron-builder --win --publish onTagOrDraft"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
+  },
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
+  },
+  "build": {
+    "appId": "com.keynotetimer.app",
+    "productName": "Keynote Timer",
+    "files": ["main.js", "preload.js", "index.html", "external.html"],
+    "publish": {
+      "provider": "github",
+      "owner": "YOUR_GITHUB_USERNAME",
+      "repo": "keynote-timer"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "icon.icns",
+      "target": [{ "target": "dmg", "arch": ["universal"] }]
+    },
+    "win": {
+      "icon": "icon.ico",
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
