@@ -21,8 +21,8 @@
     "files": ["main.js", "preload.js", "index.html", "external.html"],
     "publish": {
       "provider": "github",
-      "owner": "YOUR_GITHUB_USERNAME",
-      "repo": "keynote-timer"
+      "owner": "Fiddles555",
+      "repo": "KeynoteTimer"
     },
     "mac": {
       "category": "public.app-category.productivity",
