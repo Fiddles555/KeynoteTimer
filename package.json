@@ -5,8 +5,11 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build-mac": "electron-builder --mac --universal",
-    "build-win": "electron-builder --win"
+    "build-mac": "electron-builder --mac --universal --publish always",
+    "build-win": "electron-builder --win --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7"
   },
   "devDependencies": {
     "electron": "^28.2.0",
@@ -16,6 +19,11 @@
     "appId": "com.keynotetimer.app",
     "productName": "Keynote Timer",
     "files": ["main.js", "preload.js", "index.html", "external.html"],
+    "publish": {
+      "provider": "github",
+      "owner": "YOUR_GITHUB_USERNAME",
+      "repo": "keynote-timer"
+    },
     "mac": {
       "category": "public.app-category.productivity",
       "icon": "icon.icns",

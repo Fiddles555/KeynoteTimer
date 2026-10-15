@@ -1,9 +1,10 @@
-name: Build
+name: Build & Release
 
 on:
   push:
-    branches: [main]
-  workflow_dispatch:
+    tags:
+      - 'v*'          # triggers on version tags like v1.0.1, v1.2.0
+  workflow_dispatch:  # allows manual trigger from GitHub UI
 
 jobs:
   build-mac:
@@ -15,6 +16,9 @@ jobs:
           node-version: 20
       - run: npm install
       - run: npm run build-mac
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: Keynote-Timer-Mac
@@ -29,6 +33,9 @@ jobs:
           node-version: 20
       - run: npm install
       - run: npm run build-win
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
       - uses: actions/upload-artifact@v4
         with:
           name: Keynote-Timer-Windows
