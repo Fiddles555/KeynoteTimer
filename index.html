@@ -308,6 +308,7 @@ function render(){
 // ── Timer ───────────────────────────────────────────────────────────────────
 function timerClick(e){if(e.target!==document.getElementById('message-overlay'))toggleTimer();}
 function toggleTimer(){if(S.running){stopTimer();resetTT();}else startTimer();}
+document.addEventListener('keydown',function(e){if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')return;if(document.querySelector('.panel-overlay.open'))return;if(e.key==='Enter'){e.preventDefault();toggleTimer();}});
 function startTimer(){
   if(S.rem<=0)return;
   S.running=true;S.finished=false;
