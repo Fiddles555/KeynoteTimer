@@ -1,8 +1,41 @@
-const { app, BrowserWindow, ipcMain, screen, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Menu, dialog } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
 
 let mainWin = null;
 let externalWin = null;
+
+// ── Auto-updater ───────────────────────────────────────────────────────────────
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', () => {
+    dialog.showMessageBox(mainWin, {
+      type: 'info',
+      title: 'Update Available',
+      message: 'A new version of Keynote Timer is downloading...',
+      buttons: ['OK']
+    });
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    dialog.showMessageBox(mainWin, {
+      type: 'info',
+      title: 'Update Ready',
+      message: 'Update downloaded. Keynote Timer will restart to install.',
+      buttons: ['Restart Now', 'Later']
+    }).then(result => {
+      if (result.response === 0) autoUpdater.quitAndInstall();
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('Auto-updater error:', err);
+  });
+
+  autoUpdater.checkForUpdatesAndNotify();
+}
 
 function createMainWindow() {
   mainWin = new BrowserWindow({
@@ -33,7 +66,6 @@ function createExternalWindow() {
   const displays = screen.getAllDisplays();
   const primary = screen.getPrimaryDisplay();
 
-  // Pick a secondary display if available, otherwise use primary
   const target = displays.find(d => d.id !== primary.id) || primary;
   const { x, y, width, height } = target.bounds;
 
@@ -41,8 +73,8 @@ function createExternalWindow() {
     x, y, width, height,
     title: 'Keynote Timer — External Display',
     backgroundColor: '#3da012',
-    frame: false,                // always frameless — clean full-screen look
-    fullscreen: false,           // never use native fullscreen (traps the user)
+    frame: false,
+    fullscreen: false,
     simpleFullscreen: false,
     resizable: true,
     movable: true,
@@ -53,9 +85,7 @@ function createExternalWindow() {
     }
   });
 
-  // Fill the target display exactly using setBounds (works on both displays)
   externalWin.setBounds({ x, y, width, height });
-
   externalWin.loadFile('external.html');
 
   externalWin.on('closed', () => {
@@ -65,7 +95,6 @@ function createExternalWindow() {
     }
   });
 
-  // Tell the main window a display is open
   externalWin.webContents.once('did-finish-load', () => {
     if (mainWin && !mainWin.isDestroyed()) {
       mainWin.webContents.send('external-opened');
@@ -74,8 +103,6 @@ function createExternalWindow() {
 }
 
 // ── IPC handlers ──────────────────────────────────────────────────────────────
-
-// Main window asks to open/close external
 ipcMain.on('open-external', () => {
   if (externalWin && !externalWin.isDestroyed()) {
     externalWin.focus();
@@ -88,14 +115,12 @@ ipcMain.on('close-external', () => {
   if (externalWin && !externalWin.isDestroyed()) externalWin.close();
 });
 
-// Main window pushes timer state to external window
 ipcMain.on('push-state', (_event, state) => {
   if (externalWin && !externalWin.isDestroyed()) {
     externalWin.webContents.send('state-update', state);
   }
 });
 
-// Query whether external is open
 ipcMain.handle('external-status', () => {
   return externalWin && !externalWin.isDestroyed();
 });
@@ -123,6 +148,11 @@ function buildMenu() {
           }
         },
         { type: 'separator' },
+        {
+          label: 'Check for Updates...',
+          click: () => autoUpdater.checkForUpdatesAndNotify()
+        },
+        { type: 'separator' },
         { role: 'quit' }
       ]
     },
@@ -133,7 +163,10 @@ function buildMenu() {
 }
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
-app.whenReady().then(createMainWindow);
+app.whenReady().then(() => {
+  createMainWindow();
+  setupAutoUpdater();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
