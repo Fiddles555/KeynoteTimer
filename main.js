@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, Menu, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, Menu, dialog, shell } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
@@ -7,26 +7,19 @@ let externalWin = null;
 
 // ── Auto-updater ───────────────────────────────────────────────────────────────
 function setupAutoUpdater() {
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoDownload = false;
 
   autoUpdater.on('update-available', () => {
     dialog.showMessageBox(mainWin, {
       type: 'info',
       title: 'Update Available',
-      message: 'A new version of Keynote Timer is downloading...',
-      buttons: ['OK']
-    });
-  });
-
-  autoUpdater.on('update-downloaded', () => {
-    dialog.showMessageBox(mainWin, {
-      type: 'info',
-      title: 'Update Ready',
-      message: 'Update downloaded. Keynote Timer will restart to install.',
-      buttons: ['Restart Now', 'Later']
+      message: 'A new version of Keynote Timer is available.',
+      detail: 'Click Download to get the latest version from GitHub.',
+      buttons: ['Download', 'Later']
     }).then(result => {
-      if (result.response === 0) autoUpdater.quitAndInstall();
+      if (result.response === 0) {
+        shell.openExternal('https://github.com/Fiddles555/KeynoteTimer/releases/latest');
+      }
     });
   });
 
@@ -34,7 +27,7 @@ function setupAutoUpdater() {
     console.error('Auto-updater error:', err);
   });
 
-  autoUpdater.checkForUpdatesAndNotify();
+  autoUpdater.checkForUpdates();
 }
 
 function createMainWindow() {
@@ -150,7 +143,7 @@ function buildMenu() {
         { type: 'separator' },
         {
           label: 'Check for Updates...',
-          click: () => autoUpdater.checkForUpdatesAndNotify()
+          click: () => autoUpdater.checkForUpdates()
         },
         { type: 'separator' },
         { role: 'quit' }
