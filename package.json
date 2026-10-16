@@ -1,6 +1,6 @@
 {
   "name": "keynote-timer",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Professional countdown timer for keynote speakers",
   "main": "main.js",
   "scripts": {
